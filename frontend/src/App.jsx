@@ -6,6 +6,8 @@ import { entriesApi } from '../lib/entries'
 const moods = [{ icon: '☀', label: 'Happy' }, { icon: '◐', label: 'Calm' }, { icon: '✦', label: 'Inspired' }, { icon: '♥', label: 'Loved' }, { icon: '☁', label: 'Low' }]
 const blankEntry = () => ({ title: '', text: '', mood: '', tags: [], date: new Date().toISOString().slice(0, 10) })
 const moodIcon = mood => moods.find(m => m.label.toLowerCase() === String(mood).toLowerCase())?.icon || '•'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+const keepServerAwake = () => fetch(`${API_URL}/health`).catch(() => {})
 function Logo() { return <div className="brand"><span className="brand-mark">d</span><span>daymark</span></div> }
 
 function App() {
@@ -13,6 +15,12 @@ function App() {
   const [user, setUser] = useState(null), [entries, setEntries] = useState([]), [entry, setEntry] = useState(blankEntry()), [notice, setNotice] = useState(''), [confirmDelete, setConfirmDelete] = useState(false)
   const loadEntries = async () => { const result = await entriesApi.list(); setEntries(result.entries); return result.entries }
   useEffect(() => { if (!localStorage.getItem('daymark_token')) return setScreen('login'); authApi.me().then(({ user }) => { setUser(user); setScreen('app'); return loadEntries() }).catch(() => { localStorage.removeItem('daymark_token'); setScreen('login') }) }, [])
+  useEffect(() => {
+    if (screen !== 'app') return undefined
+    keepServerAwake()
+    const syncTimer = window.setInterval(() => { keepServerAwake(); loadEntries().catch(() => {}) }, 60_000)
+    return () => window.clearInterval(syncTimer)
+  }, [screen])
   const signedIn = async session => { localStorage.setItem('daymark_token', session.token); setUser(session.user); setScreen('app'); await loadEntries() }
   const signOut = async () => { try { await authApi.logout() } catch {} localStorage.removeItem('daymark_token'); setUser(null); setEntry(blankEntry()); setScreen('login') }
   const beginNew = () => { setEntry(blankEntry()); setConfirmDelete(false); setActive('Today') }

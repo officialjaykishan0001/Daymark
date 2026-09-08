@@ -33,6 +33,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`); const path = url.pathname
   try {
     const users = db.collection('users'), entries = db.collection('entries')
+    if (req.method === 'GET' && path === '/api/health') return send(res, 200, { status: 'ok', timestamp: new Date().toISOString() })
     if (req.method === 'POST' && path === '/api/auth/register') {
       const input = await body(req); const name = String(input.name || '').trim(); const email = String(input.email || '').trim().toLowerCase(); const password = String(input.password || '')
       if (!name || !/^\S+@\S+\.\S+$/.test(email) || password.length < 6) return send(res, 400, { message: 'Please provide a name, valid email, and a password of at least 6 characters.' })
